@@ -6,11 +6,15 @@ angular.module('ngMQTT', [])
         $provide.provider('MQTT', function(){
 
             var settings = {
-                href: ""
+                href: "",
+                option: {}
             };
 
             this.setHref = function(href){
                 settings.href = href;
+            };
+            this.setOption = function(option){
+                settings.option = option;
             };
             this.$get = function() {
                 return settings;
@@ -19,21 +23,38 @@ angular.module('ngMQTT', [])
     }])
 
     .service('MQTTService',
-        ['$q', 'MQTT', function($q, MQTT) {
+        ['$q', '$rootScope', 'MQTT', function($q, $rootScope, MQTT) {
             var Service = {};
             var callbacks = {};
 
-            var client = mqtt.connect(MQTT.href); // you add a ws:// url here
+            var client = mqtt.connect(MQTT.href, MQTT.option); // you add a ws:// url here
 
             client.on("message", function(topic, payload) {
                 try {
                     var data = JSON.parse(payload.toString());
                 }catch (e){
-                    throw new Error("received data can not parse for JSON !");
+                    var data = payload.toString();
                 }
                 angular.forEach(callbacks,function(callback, name){
-                    if(name === topic){
-                        callback(data);
+                    var regexpStr = name.replace(new RegExp('(#)|(\\*)|(\\+)'),function(str){
+                      switch (str) {
+                        case "#":
+                          return ".*?"
+                          break;
+                        case "*":
+                          return ".*?"
+                          break;
+                        case "+":
+                          return ".*"
+                          break;
+                        default:
+                          break;
+                    }
+                  });
+                    if(topic.match(regexpStr)){
+                        $rootScope.$apply(function() {
+                            callback(data, topic);
+                        });
                     }
                 })
             });
@@ -46,6 +67,10 @@ angular.module('ngMQTT', [])
             };
             Service.send = function(name, data){
                 client.publish(name, JSON.stringify(data));
+            };
+            Service.drop = function(name, callback){
+                callbacks[name] = callback;
+                client.unsubscribe(name);
             };
             return Service;
         }]);
