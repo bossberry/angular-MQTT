@@ -6,11 +6,15 @@ angular.module('ngMQTT', [])
         $provide.provider('MQTT', function(){
 
             var settings = {
-                href: ""
+                href: "",
+                option: {}
             };
 
             this.setHref = function(href){
                 settings.href = href;
+            };
+            this.setOption = function(option){
+                settings.option = option;
             };
             this.$get = function() {
                 return settings;
@@ -23,7 +27,7 @@ angular.module('ngMQTT', [])
             var Service = {};
             var callbacks = {};
 
-            var client = mqtt.connect(MQTT.href); // you add a ws:// url here
+            var client = mqtt.connect(MQTT.href, MQTT.option); // you add a ws:// url here
 
             client.on("message", function(topic, payload) {
                 try {
